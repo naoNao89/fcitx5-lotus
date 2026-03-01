@@ -466,6 +466,7 @@ namespace fcitx {
                 pending_commit_string_   = "";
 
                 event.filterAndAccept(); // Filter out the final trigger backspace.
+                replayBufferedKeys(!isBackspace(currentSym), sleepTime);
                 return true;
             }
         }
@@ -556,6 +557,10 @@ namespace fcitx {
                     return;
                 }
             } else {
+                std::string keyUtf8Check = Key::keySymToUTF8(currentSym);
+                if (!keyUtf8Check.empty() && buffered_keys_.size() < MAX_BUFFERED_KEYS) {
+                    buffered_keys_.push_back(currentSym);
+                }
                 keyEvent.filterAndAccept();
             }
             return;
@@ -823,6 +828,7 @@ namespace fcitx {
             }
             replacement_thread_id_.store(0, std::memory_order_release);
             replacement_start_ms_.store(0, std::memory_order_release);
+            replayBufferedKeys(true, 20);
         }
         if (keyEvent.rawKey().check(FcitxKey_Shift_L) || keyEvent.rawKey().check(FcitxKey_Shift_R))
             return;
@@ -957,11 +963,107 @@ namespace fcitx {
         }
         emojiBuffer_.clear();
         emojiCandidates_.clear();
+        buffered_keys_.clear();
         if (lotusEngine_)
             ResetEngine(lotusEngine_.handle());
     }
 
     bool LotusState::isEmptyHistory() {
         return history_.empty();
+    }
+
+    void LotusState::replayBufferedKeys(bool checkEmptyPreedit, int sleepTime) {
+        (void)checkEmptyPreedit;
+        (void)sleepTime;
+        if (buffered_keys_.empty()) {
+            return;
+        }
+        auto keys = std::move(buffered_keys_);
+        buffered_keys_.clear();
+        for (size_t i = 0; i < keys.size(); ++i) {
+            KeySym      sym     = keys[i];
+            std::string keyUtf8 = Key::keySymToUTF8(sym);
+            if (keyUtf8.empty()) {
+                continue;
+            }
+
+            bool processed = EngineProcessKeyEvent(lotusEngine_.handle(), sym, 0);
+
+            auto commitF = UniqueCPtr<char>(EnginePullCommit(lotusEngine_.handle()));
+            if (commitF && commitF.get()[0]) {
+                std::string commitStr = commitF.get();
+                std::string commonPrefix, deletedPart, addedPart;
+                compareAndSplitStrings(oldPreBuffer_, commitStr, commonPrefix, deletedPart, addedPart);
+
+                if (!deletedPart.empty()) {
+                    // Re-buffer remaining keys for next replay cycle.
+                    for (size_t j = i + 1; j < keys.size(); ++j) {
+                        if (buffered_keys_.size() < MAX_BUFFERED_KEYS) {
+                            buffered_keys_.push_back(keys[j]);
+                        }
+                    }
+                    performReplacement(deletedPart, addedPart);
+                    return;
+                } else if (!addedPart.empty()) {
+                    ic_->commitString(addedPart);
+                    oldPreBuffer_ = commitStr;
+                }
+
+                history_.clear();
+                ResetEngine(lotusEngine_.handle());
+                oldPreBuffer_.clear();
+                continue;
+            }
+
+            if (!processed) {
+                ic_->commitString(keyUtf8);
+                continue;
+            }
+
+            history_ += keyUtf8;
+            realtextLen += 1;
+
+            replayBufferToEngine(history_);
+
+            auto commitAfterReplay = UniqueCPtr<char>(EnginePullCommit(lotusEngine_.handle()));
+            if (commitAfterReplay && commitAfterReplay.get()[0]) {
+                history_.clear();
+                ResetEngine(lotusEngine_.handle());
+                oldPreBuffer_.clear();
+                continue;
+            }
+
+            UniqueCPtr<char> preeditC(EnginePullPreedit(lotusEngine_.handle()));
+            std::string      preeditStr = (preeditC && preeditC.get()[0]) ? preeditC.get() : "";
+
+            std::string      commonPrefix, deletedPart, addedPart;
+            if (compareAndSplitStrings(oldPreBuffer_, preeditStr, commonPrefix, deletedPart, addedPart)) {
+                if (deletedPart.empty()) {
+                    if (!addedPart.empty()) {
+                        ic_->commitString(addedPart);
+                        oldPreBuffer_ = preeditStr;
+                    }
+                } else {
+                    if (uinput_client_fd_ < 0) {
+                        ic_->commitString(keyUtf8);
+                        continue;
+                    }
+
+                    if (is_deleting_.load()) {
+                        is_deleting_.store(false, std::memory_order_release);
+                    }
+
+                    // Re-buffer remaining keys for next replay cycle.
+                    for (size_t j = i + 1; j < keys.size(); ++j) {
+                        if (buffered_keys_.size() < MAX_BUFFERED_KEYS) {
+                            buffered_keys_.push_back(keys[j]);
+                        }
+                    }
+                    performReplacement(deletedPart, addedPart);
+                    oldPreBuffer_ = preeditStr;
+                    return;
+                }
+            }
+        }
     }
 } // namespace fcitx
