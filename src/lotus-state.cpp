@@ -466,7 +466,7 @@ namespace fcitx {
                 pending_commit_string_   = "";
 
                 event.filterAndAccept(); // Filter out the final trigger backspace.
-                replayBufferedKeys(!isBackspace(currentSym), sleepTime);
+                replayBufferedKeys();
                 return true;
             }
         }
@@ -828,7 +828,7 @@ namespace fcitx {
             }
             replacement_thread_id_.store(0, std::memory_order_release);
             replacement_start_ms_.store(0, std::memory_order_release);
-            replayBufferedKeys(true, 20);
+            replayBufferedKeys();
         }
         if (keyEvent.rawKey().check(FcitxKey_Shift_L) || keyEvent.rawKey().check(FcitxKey_Shift_R))
             return;
@@ -972,9 +972,7 @@ namespace fcitx {
         return history_.empty();
     }
 
-    void LotusState::replayBufferedKeys(bool checkEmptyPreedit, int sleepTime) {
-        (void)checkEmptyPreedit;
-        (void)sleepTime;
+    void LotusState::replayBufferedKeys() {
         if (buffered_keys_.empty()) {
             return;
         }

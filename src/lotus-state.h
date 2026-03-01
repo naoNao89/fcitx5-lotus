@@ -189,14 +189,11 @@ namespace fcitx {
         /**
          * @brief Replays keystrokes buffered during replacement.
          *
-         * When is_deleting_ is true, non-backspace keystrokes are buffered
+         * When is_deleting_ is true, non-special keystrokes are buffered
          * instead of being discarded. This method replays them after the
          * replacement completes.
-         *
-         * @param checkEmptyPreedit Whether to check for empty preedit.
-         * @param sleepTime Delay in milliseconds for uinput mode.
          */
-        void replayBufferedKeys(bool checkEmptyPreedit, int sleepTime);
+        void replayBufferedKeys();
 
         friend class EmojiCandidateWord;
         friend class LotusEngine;
