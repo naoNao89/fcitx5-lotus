@@ -65,7 +65,7 @@ namespace fcitx {
         /**
          * @brief Resets the input state.
          */
-        void reset();
+        void reset(bool isFocusOut = false);
 
         /**
          * @brief Commits the current buffer.
