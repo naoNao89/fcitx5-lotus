@@ -270,14 +270,10 @@ namespace fcitx {
             switch (currentSym) {
                 case FcitxKey_Tab:
                 case FcitxKey_Down: {
-                    if (globalCursorIndex == totalSize - 1) {
-                        commonList->setGlobalCursorIndex(globalCursorIndex);
-                    } else if (localCursorIndex < pageSize - 1) {
+                    if (localCursorIndex < pageSize - 1 && globalCursorIndex < totalSize - 1) {
                         commonList->setGlobalCursorIndex(globalCursorIndex + 1);
                     } else {
-                        commonList->next();
-                        int newPage = commonList->currentPage();
-                        commonList->setGlobalCursorIndex(newPage * pageSize);
+                        commonList->setGlobalCursorIndex(currentPage * pageSize);
                     }
                     handled = true;
                     break;
@@ -285,15 +281,11 @@ namespace fcitx {
 
                 case FcitxKey_ISO_Left_Tab:
                 case FcitxKey_Up: {
-                    if (globalCursorIndex == 0) {
-                        commonList->setGlobalCursorIndex(globalCursorIndex);
-                    } else if (localCursorIndex > 0) {
+                    if (localCursorIndex > 0) {
                         commonList->setGlobalCursorIndex(globalCursorIndex - 1);
                     } else {
-                        commonList->prev();
-                        int newPage  = commonList->currentPage();
-                        int newIndex = (newPage * pageSize) + pageSize - 1;
-                        commonList->setGlobalCursorIndex(newIndex);
+                        int lastIndex = std::min(currentPage * pageSize + pageSize - 1, totalSize - 1);
+                        commonList->setGlobalCursorIndex(lastIndex);
                     }
                     handled = true;
                     break;
