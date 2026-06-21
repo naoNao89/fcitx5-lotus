@@ -714,12 +714,10 @@ namespace fcitx {
             return;
         }
 
-        if (surrounding.anchor() != surrounding.cursor()) {
-            ic->deleteSurroundingText(0, 0);
-        }
-
         const std::string& text   = surrounding.text();
-        unsigned int       cursor = surrounding.cursor();
+        unsigned int       cursor = surrounding.anchor() != surrounding.cursor()
+                                        ? std::min(surrounding.anchor(), surrounding.cursor())
+                                        : surrounding.cursor();
 
         size_t             textLen = utf8::lengthValidated(text);
 
@@ -874,7 +872,9 @@ namespace fcitx {
     }
 
     void LotusState::keyEvent(KeyEvent& keyEvent) {
-        if (!lotusEngine_ || keyEvent.isRelease() || keyEvent.rawKey().check(FcitxKey_Shift_L) || keyEvent.rawKey().check(FcitxKey_Shift_R))
+        if (!lotusEngine_ || keyEvent.isRelease() ||
+            keyEvent.rawKey().check(FcitxKey_Shift_L) || keyEvent.rawKey().check(FcitxKey_Shift_R) ||
+            keyEvent.rawKey().isModifier())
             return;
         if (uinput_client_fd_ < 0) {
             LOTUS_WARN("Cannot connect to uinput server, reconnecting....");
