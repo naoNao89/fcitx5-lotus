@@ -65,20 +65,26 @@ const (
 )
 
 func determineMacroCase(str string) uint8 {
-	if len(str) == 0 {
-		return VnCaseNoChange
-	}
-
-	r, width := utf8.DecodeRuneInString(str)
-	if unicode.IsLower(r) {
-		return VnCaseAllSmall
-	}
-	for _, c := range str[width:] {
-		if unicode.IsLower(c) {
-			return VnCaseNoChange
+	var hasLower, hasUpper bool
+	for _, c := range str {
+		if unicode.IsLetter(c) {
+			if unicode.IsLower(c) {
+				hasLower = true
+			} else if unicode.IsUpper(c) {
+				hasUpper = true
+			}
+			if hasLower && hasUpper {
+				return VnCaseNoChange
+			}
 		}
 	}
-	return VnCaseAllCapital
+	if hasLower {
+		return VnCaseAllSmall
+	}
+	if hasUpper {
+		return VnCaseAllCapital
+	}
+	return VnCaseNoChange
 }
 
 var strftimeReplacer = strings.NewReplacer(
@@ -141,7 +147,7 @@ func (e *FcitxBambooEngine) expandMacro(str, macroText string) string {
 }
 
 func (e *FcitxBambooEngine) getMacroText() (bool, string) {
-	if !e.macroEnabled {
+	if !e.macroEnabled && e.macroTable.Empty() {
 		return false, ""
 	}
 
@@ -161,7 +167,7 @@ func (e *FcitxBambooEngine) shouldFallbackToEnglish(checkVnRune bool) bool {
 	if len(vnSeq) == 0 {
 		return false
 	}
-	if e.macroEnabled {
+	if e.macroEnabled && !e.macroTable.Empty() {
 		// Use macrotable.Get instead of getMacroText to avoid unnecessary expandMacro
 		if _, ok := e.macroTable.Get(e.getProcessedString(bamboo.PunctuationMode)); ok {
 			return false
