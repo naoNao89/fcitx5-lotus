@@ -147,7 +147,7 @@ func (e *FcitxBambooEngine) expandMacro(str, macroText string) string {
 }
 
 func (e *FcitxBambooEngine) getMacroText() (bool, string) {
-	if !e.macroEnabled && e.macroTable.Empty() {
+	if !e.macroEnabled || e.macroTable.Empty() {
 		return false, ""
 	}
 
@@ -375,7 +375,7 @@ func (e *FcitxBambooEngine) canProcessKey(keyVal uint32) bool {
 		return true
 	}
 	if keyVal == FcitxTab {
-		if e.macroEnabled && !e.macroTable.Empty(){
+		if e.macroEnabled && !e.macroTable.Empty() {
 			// Use macrotable.Get instead of getMacroText to avoid unnecessary expandMacro
 			if _, ok := e.macroTable.Get(e.getProcessedString(bamboo.PunctuationMode)); ok {
 				return true
