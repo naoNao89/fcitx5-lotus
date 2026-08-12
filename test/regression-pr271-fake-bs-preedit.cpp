@@ -89,6 +89,7 @@ int main() {
     fcitx::LotusEngine engine(&instance);
     auto               context = std::make_unique<TestInputContext>(&instance);
     context->setCapabilityFlags(fcitx::CapabilityFlag::Preedit);
+    context->focusIn();
     fcitx::InputMethodEntry entry("lotus", "Lotus", "vi", "lotus");
 
     // Proves the recorder observes the real InputContext callback.
