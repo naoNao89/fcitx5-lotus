@@ -12,8 +12,10 @@
 
 #include <fcitx/inputcontext.h>
 #include <fcitx/inputcontextmanager.h>
+#include <fcitx/inputpanel.h>
 #include <fcitx/instance.h>
 #include <fcitx/addonmanager.h>
+#include <fcitx/text.h>
 
 namespace {
 
@@ -86,6 +88,7 @@ int main() {
     char*           argv[]       = {program, disableAll, nullptr};
     fcitx::Instance instance(2, argv);
     instance.addonManager().registerDefaultLoader(nullptr);
+    instance.initialize();
     fcitx::LotusEngine engine(&instance);
     auto               context = std::make_unique<TestInputContext>(&instance);
     context->setCapabilityFlags(fcitx::CapabilityFlag::Preedit);
@@ -93,6 +96,7 @@ int main() {
     fcitx::InputMethodEntry entry("lotus", "Lotus", "vi", "lotus");
 
     // Proves the recorder observes the real InputContext callback.
+    context->inputPanel().setClientPreedit(fcitx::Text("probe"));
     context->updatePreedit();
     if (context->preeditUpdates() != 1) {
         std::cerr << "direct updatePreedit did not reach TestInputContext\n";
@@ -107,6 +111,7 @@ int main() {
         return 1;
     }
 
+    context->focusOut();
     context->resetRecorder();
     fcitx::InputContextEvent focusOut(context.get(), fcitx::EventType::InputContextFocusOut);
     const auto               deactivateBefore = context->preeditUpdates();
