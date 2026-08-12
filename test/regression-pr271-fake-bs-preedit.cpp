@@ -89,7 +89,7 @@ int main() {
     fcitx::LotusEngine engine(&instance);
     auto               context = std::make_unique<TestInputContext>(&instance);
     context->setCapabilityFlags(fcitx::CapabilityFlag::Preedit);
-    fcitx::InputMethodEntry entry;
+    fcitx::InputMethodEntry entry("lotus", "Lotus", "vi", "lotus");
 
     // Proves the recorder observes the real InputContext callback.
     context->updatePreedit();
@@ -99,7 +99,7 @@ int main() {
     }
 
     context->resetRecorder();
-    fcitx::InputContextEvent focusIn(fcitx::EventType::InputContextFocusIn, context.get());
+    fcitx::InputContextEvent focusIn(context.get(), fcitx::EventType::InputContextFocusIn);
     const auto               activateBefore = context->preeditUpdates();
     engine.activate(entry, focusIn);
     if (!expectZero("activate", activateBefore, context->preeditUpdates())) {
@@ -107,7 +107,7 @@ int main() {
     }
 
     context->resetRecorder();
-    fcitx::InputContextEvent focusOut(fcitx::EventType::InputContextFocusOut, context.get());
+    fcitx::InputContextEvent focusOut(context.get(), fcitx::EventType::InputContextFocusOut);
     const auto               deactivateBefore = context->preeditUpdates();
     engine.deactivate(entry, focusOut);
     if (!expectZero("deactivate", deactivateBefore, context->preeditUpdates())) {
