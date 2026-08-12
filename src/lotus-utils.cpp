@@ -101,3 +101,14 @@ std::string getFrontendName(fcitx::InputContext* ic) {
     }
     return ic->frontend();
 }
+
+void eraseLastUtf8Codepoint(std::string& buffer) {
+    if (buffer.empty()) {
+        return;
+    }
+    size_t pos = buffer.size() - 1;
+    while (pos > 0 && (static_cast<unsigned char>(buffer[pos]) & 0xC0) == 0x80) {
+        --pos;
+    }
+    buffer.erase(pos);
+}

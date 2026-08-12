@@ -328,10 +328,7 @@ namespace fcitx {
                 if (isCtrlBackspace) {
                     emojiBuffer_.clear();
                 } else {
-                    emojiBuffer_.pop_back();
-                    while (!emojiBuffer_.empty() && (emojiBuffer_.back() & 0xC0) == 0x80) {
-                        emojiBuffer_.pop_back();
-                    }
+                    eraseLastUtf8Codepoint(emojiBuffer_);
                 }
                 keyEvent.filterAndAccept();
             } else {

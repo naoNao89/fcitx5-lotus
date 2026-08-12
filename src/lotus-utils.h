@@ -67,6 +67,16 @@ int64_t now_ms();
 bool isBackspace(uint32_t sym);
 
 /**
+ * @brief Erases the last UTF-8 codepoint from a string in place.
+ *
+ * Walks back past any continuation bytes (10xxxxxx) to find the leading
+ * byte, then erases from that position. Correctly handles 2/3/4-byte
+ * sequences; no-op on empty input. Used by the emoji-mode backspace
+ * handler so the preedit stays valid UTF-8 after each backspace.
+ */
+void eraseLastUtf8Codepoint(std::string& buffer);
+
+/**
  * @brief Compares two strings and computes diff.
  * @param A First string.
  * @param B Second string.
