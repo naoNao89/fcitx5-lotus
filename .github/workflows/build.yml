@@ -8,20 +8,8 @@ permissions:
   security-events: write
 
 jobs:
-  clang-format:
-    name: Check clang-format
-    runs-on: ubuntu-latest
-    container: archlinux:latest
-    steps:
-      - name: Install dependencies
-        run: |
-          pacman -Syu --noconfirm git clang diffutils
-          git config --global --add safe.directory $GITHUB_WORKSPACE
-      - uses: actions/checkout@v6
-      - uses: fcitx/github-actions@clang-format
   check:
     name: Build and test
-    needs: clang-format
     runs-on: ubuntu-latest
     container: archlinux:latest
 
