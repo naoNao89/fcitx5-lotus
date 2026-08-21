@@ -1,13 +1,4 @@
-set(fcitx_lotus_sources
-  lotus.cpp
-  lotus-engine.cpp
-  lotus-state.cpp
-  lotus-candidates.cpp
-  lotus-utils.cpp
-  lotus-monitor.cpp
-)
-
-add_library(lotus MODULE ${fcitx_lotus_sources})
+add_library(lotus MODULE lotus.cpp ${fcitx_lotus_core_sources})
 set_target_properties(lotus PROPERTIES OUTPUT_NAME "lotus")
 target_link_libraries(lotus
 	Fcitx5::Core
@@ -19,7 +10,9 @@ target_link_libraries(lotus
 
 target_include_directories(lotus PRIVATE
     ${PROJECT_BINARY_DIR}
-    ${PROJECT_SOURCE_DIR}/data/emoji
+)
+target_compile_definitions(lotus PRIVATE
+    FCITX5_LOTUS_SETTINGS_PATH=\"${CMAKE_INSTALL_FULL_BINDIR}/fcitx5-lotus-settings\"
 )
 install(TARGETS lotus DESTINATION "${CMAKE_INSTALL_LIBDIR}/fcitx5")
 
