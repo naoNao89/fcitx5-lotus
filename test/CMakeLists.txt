@@ -32,3 +32,6 @@ function(add_bamboo_test target source labels)
     add_test(NAME ${target} COMMAND ${target})
     set_tests_properties(${target} PROPERTIES LABELS "${labels}" TIMEOUT 20)
 endfunction()
+
+add_bamboo_test(numeric_macro_case_preservation
+    numeric-macro-case-preservation.cpp "unit;macro")
