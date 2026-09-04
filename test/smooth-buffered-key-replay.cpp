@@ -27,7 +27,7 @@ namespace {
     class BackspaceListener {
       public:
         BackspaceListener() {
-            fd_ = socket(AF_UNIX, SOCK_SEQPACKET, 0);
+            fd_ = socket(AF_UNIX, SOCK_STREAM, 0);
             if (fd_ < 0) {
                 fail("socket");
                 return;
@@ -90,7 +90,7 @@ namespace {
                 reportFailure("wait for replacement request", "POLLIN revents", "revents=" + std::to_string(pollfd.revents), meaning);
                 return false;
             }
-            const auto received = recv(client_, &count, sizeof(count), 0);
+            const auto received = recv(client_, &count, sizeof(count), MSG_WAITALL);
             if (received < 0) {
                 reportFailure("receive replacement request", std::to_string(sizeof(count)) + " bytes", "recv failed: " + std::string(std::strerror(errno)), meaning);
                 return false;
@@ -140,7 +140,8 @@ int main() {
     config.setValueByPath("Mode", "Uinput (Smooth)");
     config.setValueByPath("InputMethod", "Telex");
     engine.setConfig(config);
-    if (engine.config().mode.value() != fcitx::LotusMode::Smooth || engine.config().inputMethod.value() != "Telex") {
+    const auto configuredMode = fcitx::modeStringToEnum(engine.config().mode.value());
+    if (configuredMode != fcitx::LotusMode::Smooth || engine.config().inputMethod.value() != "Telex") {
         reportFailure("configure Smooth/Telex", "mode=Smooth, input method=Telex", "configured mode or input method differs",
                       "the replay test cannot exercise Smooth Telex behavior");
         return 1;
@@ -158,7 +159,7 @@ int main() {
 
     // Telex a, s changes the real Bamboo preedit a -> á. Smooth mode replaces
     // the old character through the kb_socket transport.
-    if (!send(engine, entry, *context, FcitxKey_a, false) || !send(engine, entry, *context, FcitxKey_s, true))
+    if (!send(engine, entry, *context, FcitxKey_a, true) || !send(engine, entry, *context, FcitxKey_s, true))
         return 1;
     int backspaces = 0;
     if (!listener.receive(backspaces, "the initial Telex replacement request did not arrive"))
@@ -169,9 +170,10 @@ int main() {
         return 1;
     }
 
-    if (!send(engine, entry, *context, FcitxKey_x, true) || !context->commits().empty()) {
-        reportFailure("buffer key x before deletion completes", "no immediate commits", "commits=" + std::to_string(context->commits().size()),
-                      "buffered key x was emitted before the first replacement completed");
+    const std::vector<std::string> bufferedExpected{"a"};
+    if (!send(engine, entry, *context, FcitxKey_x, true) || context->commits() != bufferedExpected) {
+        reportFailure("buffer key x before deletion completes", "commits=['a']", "commits=" + std::to_string(context->commits().size()),
+                      "the initial key was not committed before buffered key x");
         return 1;
     }
     for (int i = 0; i < backspaces; ++i) {
@@ -192,7 +194,7 @@ int main() {
             return 1;
     }
 
-    const std::vector<std::string> expected{"á", "ã"};
+    const std::vector<std::string> expected{"a", "á", "ã"};
     if (context->commits() != expected) {
         std::string actual = "commits=";
         for (const auto& commit : context->commits())
@@ -200,7 +202,7 @@ int main() {
         const auto meaning = "the buffered key replay did not produce the expected final commits; "
                              "first-backspaces=" +
             std::to_string(backspaces) + ", replay-backspaces=" + std::to_string(replayBackspaces);
-        reportFailure("verify final replay commits", "commits=['á']['ã']", actual, meaning);
+        reportFailure("verify final replay commits", "commits=['a']['á']['ã']", actual, meaning);
         return 1;
     }
     return 0;
