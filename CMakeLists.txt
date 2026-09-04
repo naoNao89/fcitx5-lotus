@@ -31,7 +31,7 @@ include(FeatureSummary)
 include(GNUInstallDirs)
 include(ECMUninstallTarget)
 
-option(ENABLE_QT "Enable Qt based keymap editor" On)
+option(ENABLE_QT "Enable Qt based keymap editor" Off)
 
 find_package(Fcitx5Core ${REQUIRED_FCITX_VERSION} REQUIRED)
 find_package(Pthread REQUIRED)
