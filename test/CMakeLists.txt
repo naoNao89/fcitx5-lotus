@@ -32,3 +32,6 @@ function(add_bamboo_test target source labels)
     add_test(NAME ${target} COMMAND ${target})
     set_tests_properties(${target} PROPERTIES LABELS "${labels}" TIMEOUT 20)
 endfunction()
+
+add_lotus_headless_test(emoji_backspace_utf8
+    test-emoji-backspace.cpp "unit;emoji")
