@@ -32,3 +32,6 @@ function(add_bamboo_test target source labels)
     add_test(NAME ${target} COMMAND ${target})
     set_tests_properties(${target} PROPERTIES LABELS "${labels}" TIMEOUT 20)
 endfunction()
+
+add_lotus_headless_test(modifier_key_bypasses_surrounding_text
+    modifier-key-bypasses-surrounding-text.cpp "integration;surrounding")
