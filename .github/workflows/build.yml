@@ -48,20 +48,6 @@ jobs:
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
           git config --global --add safe.directory "$GITHUB_WORKSPACE/fcitx5-lotus"
           git config --global --add safe.directory "$GITHUB_WORKSPACE/fcitx5"
-      - name: Record hardware and environment telemetry
-        run: |
-          echo "=== CPU Telemetry ==="
-          nproc
-          getconf _NPROCESSORS_ONLN
-          lscpu || true
-          echo "=== Memory Telemetry ==="
-          free -h
-          echo "=== Ninja Version ==="
-          ninja --version
-          echo "=== Cgroup Limits ==="
-          if [ -d /sys/fs/cgroup ]; then
-            cat /sys/fs/cgroup/cpu.max 2>/dev/null || cat /sys/fs/cgroup/cpu/cpu.cfs_quota_us 2>/dev/null || true
-          fi
       - uses: actions/checkout@v7
         with:
           repository: fcitx/fcitx5
