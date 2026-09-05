@@ -26,7 +26,6 @@ jobs:
 
   check:
     name: Build and test
-    needs: clang-format
     runs-on: ubuntu-latest
     container: archlinux:latest
 
@@ -49,6 +48,20 @@ jobs:
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
           git config --global --add safe.directory "$GITHUB_WORKSPACE/fcitx5-lotus"
           git config --global --add safe.directory "$GITHUB_WORKSPACE/fcitx5"
+      - name: Record hardware and environment telemetry
+        run: |
+          echo "=== CPU Telemetry ==="
+          nproc
+          getconf _NPROCESSORS_ONLN
+          lscpu || true
+          echo "=== Memory Telemetry ==="
+          free -h
+          echo "=== Ninja Version ==="
+          ninja --version
+          echo "=== Cgroup Limits ==="
+          if [ -d /sys/fs/cgroup ]; then
+            cat /sys/fs/cgroup/cpu.max 2>/dev/null || cat /sys/fs/cgroup/cpu/cpu.cfs_quota_us 2>/dev/null || true
+          fi
       - uses: actions/checkout@v7
         with:
           repository: fcitx/fcitx5
@@ -72,6 +85,7 @@ jobs:
           path: fcitx5-lotus
           submodules: true
       - name: Init CodeQL
+        if: matrix.compiler == 'gcc'
         uses: github/codeql-action/init@v4.37.9
         with:
           languages: cpp,go
@@ -93,6 +107,7 @@ jobs:
         run: |
           ctest --test-dir fcitx5-lotus/build --output-on-failure --no-tests=error
       - name: CodeQL Analysis
+        if: matrix.compiler == 'gcc'
         uses: github/codeql-action/analyze@v4.37.9
         with:
           checkout_path: fcitx5-lotus
@@ -100,7 +115,6 @@ jobs:
   go-test:
     name: Go test
     runs-on: ubuntu-latest
-    needs: clang-format
     steps:
       - uses: actions/checkout@v7
         with:
@@ -122,7 +136,6 @@ jobs:
   python-lint:
     name: Python lint
     runs-on: ubuntu-latest
-    needs: clang-format
     steps:
       - uses: actions/checkout@v7
       - name: Run Ruff Lint and Format check
