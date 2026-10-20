@@ -30,61 +30,61 @@
 
 namespace {
 
-int failures = 0;
-void check(bool ok, const std::string& step, const std::string& expected, const std::string& actual) {
-    if (ok) {
-        return;
-    }
-    ++failures;
-    std::cerr << "Step: " << step << "\nExpected: " << expected << "\nActual: " << actual << "\n";
-}
-
-std::string outputsStr(const std::vector<EmojiEntry>& entries) {
-    std::string out = "[";
-    for (size_t i = 0; i < entries.size(); ++i) {
-        if (i > 0) {
-            out += ", ";
+    int  failures = 0;
+    void check(bool ok, const std::string& step, const std::string& expected, const std::string& actual) {
+        if (ok) {
+            return;
         }
-        out += entries[i].output;
+        ++failures;
+        std::cerr << "Step: " << step << "\nExpected: " << expected << "\nActual: " << actual << "\n";
     }
-    return out + "]";
-}
 
-bool hasOutput(const std::vector<EmojiEntry>& entries, const std::string& output) {
-    for (const auto& e : entries) {
-        if (e.output == output) {
-            return true;
+    std::string outputsStr(const std::vector<EmojiEntry>& entries) {
+        std::string out = "[";
+        for (size_t i = 0; i < entries.size(); ++i) {
+            if (i > 0) {
+                out += ", ";
+            }
+            out += entries[i].output;
         }
+        return out + "]";
     }
-    return false;
-}
 
-void writeText(const std::filesystem::path& path, const std::string& text) {
-    std::ofstream file(path, std::ios::binary | std::ios::trunc);
-    file << text;
-    file.close();
-}
-
-std::string readText(const std::filesystem::path& path) {
-    std::ifstream file(path, std::ios::binary);
-    if (!file.is_open()) {
-        return "";
+    bool hasOutput(const std::vector<EmojiEntry>& entries, const std::string& output) {
+        for (const auto& e : entries) {
+            if (e.output == output) {
+                return true;
+            }
+        }
+        return false;
     }
-    return std::string((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
-}
 
-EmojiLoader makeSearchLoader(std::vector<EmojiEntry> entries) {
-    EmojiLoader loader(nullptr);
-    loader.setEmojiListForTest(std::move(entries));
-    return loader;
-}
+    void writeText(const std::filesystem::path& path, const std::string& text) {
+        std::ofstream file(path, std::ios::binary | std::ios::trunc);
+        file << text;
+        file.close();
+    }
+
+    std::string readText(const std::filesystem::path& path) {
+        std::ifstream file(path, std::ios::binary);
+        if (!file.is_open()) {
+            return "";
+        }
+        return std::string((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+    }
+
+    EmojiLoader makeSearchLoader(std::vector<EmojiEntry> entries) {
+        EmojiLoader loader(nullptr);
+        loader.setEmojiListForTest(std::move(entries));
+        return loader;
+    }
 
 } // namespace
 
 int main() {
     // Sandbox user paths so the constructor's default history location never
     // touches the developer's real fcitx5 config (read-only anyway).
-    const auto root = std::filesystem::temp_directory_path() / ("fcitx5-lotus-emoji-search-history-" + std::to_string(::getpid()));
+    const auto      root = std::filesystem::temp_directory_path() / ("fcitx5-lotus-emoji-search-history-" + std::to_string(::getpid()));
     std::error_code ec;
     std::filesystem::remove_all(root, ec);
     std::filesystem::create_directories(root, ec);
@@ -103,50 +103,49 @@ int main() {
 
     // Search: case-insensitive ('CAT' matches 'cat').
     {
-        auto loader = makeSearchLoader({{.trigger = "cat", .output = "cat"}, {.trigger = "dog", .output = "dog"}});
-        const auto upper = loader.search("CAT");
-        const auto mixed = loader.search("Cat");
+        auto       loader = makeSearchLoader({{.trigger = "cat", .output = "cat"}, {.trigger = "dog", .output = "dog"}});
+        const auto upper  = loader.search("CAT");
+        const auto mixed  = loader.search("Cat");
         check(hasOutput(upper, "cat"), "uppercase query", "contains cat", outputsStr(upper));
         check(hasOutput(mixed, "cat"), "mixed-case query", "contains cat", outputsStr(mixed));
     }
 
     // Search: exact 'cat' beats fuzzy-subsequence 'c_a_t'.
     {
-        auto loader = makeSearchLoader({{.trigger = "c_a_t", .output = "fuzzy"}, {.trigger = "cat", .output = "exact"}});
+        auto       loader  = makeSearchLoader({{.trigger = "c_a_t", .output = "fuzzy"}, {.trigger = "cat", .output = "exact"}});
         const auto results = loader.search("cat");
         check(!results.empty() && results[0].output == "exact", "exact beats fuzzy", "exact first", outputsStr(results));
     }
 
     // Search: exact 'cat' beats prefix 'category'.
     {
-        auto loader = makeSearchLoader({{.trigger = "category", .output = "prefix"}, {.trigger = "cat", .output = "exact"}});
+        auto       loader  = makeSearchLoader({{.trigger = "category", .output = "prefix"}, {.trigger = "cat", .output = "exact"}});
         const auto results = loader.search("cat");
         check(!results.empty() && results[0].output == "exact", "exact beats prefix", "exact first", outputsStr(results));
     }
 
     // Search: full tier order exact > prefix > word-boundary > fuzzy.
     {
-        auto loader = makeSearchLoader({
+        auto       loader  = makeSearchLoader({
             {.trigger = "c_a_t", .output = "fuzzy"},
             {.trigger = "my_cat", .output = "word"},
             {.trigger = "category", .output = "prefix"},
             {.trigger = "cat", .output = "exact"},
         });
         const auto results = loader.search("cat");
-        const bool ordered = results.size() == 4 && results[0].output == "exact" && results[1].output == "prefix" && results[2].output == "word" &&
-                             results[3].output == "fuzzy";
+        const bool ordered = results.size() == 4 && results[0].output == "exact" && results[1].output == "prefix" && results[2].output == "word" && results[3].output == "fuzzy";
         check(ordered, "tier order", "[exact, prefix, word, fuzzy]", outputsStr(results));
     }
 
     // Search: stable order for equal scores (duplicate triggers keep insertion order).
     {
-        auto loader = makeSearchLoader({
+        auto       loader  = makeSearchLoader({
             {.trigger = "cat", .output = "first"},
             {.trigger = "cat", .output = "second"},
             {.trigger = "cat", .output = "third"},
         });
         const auto results = loader.search("cat");
-        const bool stable = results.size() == 3 && results[0].output == "first" && results[1].output == "second" && results[2].output == "third";
+        const bool stable  = results.size() == 3 && results[0].output == "first" && results[1].output == "second" && results[2].output == "third";
         check(stable, "stable equal-score order", "[first, second, third]", outputsStr(results));
     }
 
@@ -156,10 +155,9 @@ int main() {
         for (size_t i = 0; i < EmojiLoader::kMaxEmojiSearchResults + 50; ++i) {
             entries.push_back({.trigger = "emoji" + std::to_string(i), .output = "e" + std::to_string(i)});
         }
-        auto loader = makeSearchLoader(std::move(entries));
+        auto       loader  = makeSearchLoader(std::move(entries));
         const auto results = loader.search("emoji");
-        check(results.size() == EmojiLoader::kMaxEmojiSearchResults, "top-k bound", std::to_string(EmojiLoader::kMaxEmojiSearchResults),
-              std::to_string(results.size()));
+        check(results.size() == EmojiLoader::kMaxEmojiSearchResults, "top-k bound", std::to_string(EmojiLoader::kMaxEmojiSearchResults), std::to_string(results.size()));
     }
 
     // Search: 1-char query latency observation (bounded result keeps it cheap).
@@ -168,18 +166,17 @@ int main() {
         for (size_t i = 0; i < 5000; ++i) {
             entries.push_back({.trigger = "k" + std::to_string(i), .output = "e" + std::to_string(i)});
         }
-        auto loader = makeSearchLoader(std::move(entries));
-        const auto start = std::chrono::steady_clock::now();
+        auto       loader  = makeSearchLoader(std::move(entries));
+        const auto start   = std::chrono::steady_clock::now();
         const auto results = loader.search("k");
-        const auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start).count();
+        const auto ms      = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start).count();
         std::cout << "1-char query over 5000 entries: " << ms << " ms, " << results.size() << " results\n";
-        check(results.size() == EmojiLoader::kMaxEmojiSearchResults, "1-char query bounded", std::to_string(EmojiLoader::kMaxEmojiSearchResults),
-              std::to_string(results.size()));
+        check(results.size() == EmojiLoader::kMaxEmojiSearchResults, "1-char query bounded", std::to_string(EmojiLoader::kMaxEmojiSearchResults), std::to_string(results.size()));
     }
 
     // History: load keeps newest 9 of 12 (file order is newest-first).
     {
-        const auto path = root / "history-cap.conf";
+        const auto  path = root / "history-cap.conf";
         std::string text;
         for (int i = 0; i < 12; ++i) {
             text += "history" + std::to_string(i) + "=e" + std::to_string(i) + "\n";
@@ -188,7 +185,7 @@ int main() {
         EmojiLoader loader(nullptr);
         loader.setHistoryPathForTest(path.string());
         const auto& history = loader.history();
-        const bool capped = history.size() == 9 && history.front().output == "e0" && history.back().output == "e8";
+        const bool  capped  = history.size() == 9 && history.front().output == "e0" && history.back().output == "e8";
         check(capped, "load keeps newest 9", "9 entries e0..e8",
               std::to_string(history.size()) + " entries" + (history.empty() ? "" : " " + history.front().output + ".." + history.back().output));
     }
@@ -200,7 +197,7 @@ int main() {
         EmojiLoader loader(nullptr);
         loader.setHistoryPathForTest(path.string());
         const auto& history = loader.history();
-        const bool deduped = history.size() == 2 && history[0].output == "\xF0\x9F\x90\xB1" && history[1].output == "\xF0\x9F\x90\xB6";
+        const bool  deduped = history.size() == 2 && history[0].output == "\xF0\x9F\x90\xB1" && history[1].output == "\xF0\x9F\x90\xB6";
         check(deduped, "duplicates collapse", "2 entries, newest first", outputsStr(history));
     }
 
@@ -211,28 +208,28 @@ int main() {
         EmojiLoader loader(nullptr);
         loader.setHistoryPathForTest(path.string());
         const auto& history = loader.history();
-        const bool clean = history.size() == 2 && history[0].output == "\xF0\x9F\x90\xB1" && history[1].output == "b=c";
+        const bool  clean   = history.size() == 2 && history[0].output == "\xF0\x9F\x90\xB1" && history[1].output == "b=c";
         check(clean, "malformed ignored", "2 entries [cat-emoji, b=c]", outputsStr(history));
     }
 
     // History: UTF-8 round-trip through record + reload.
     {
-        const auto path = root / "history-utf8.conf";
+        const auto  path = root / "history-utf8.conf";
         EmojiLoader loader(nullptr);
         loader.setHistoryPathForTest(path.string());
         loader.recordHistory({.trigger = "caf\xC3\xA9", .output = "\xE2\x98\x95"});
         loader.recordHistory({.trigger = "cat", .output = "\xF0\x9F\x90\xB1"});
         EmojiLoader reloaded(nullptr);
         reloaded.setHistoryPathForTest(path.string());
-        const auto& history = reloaded.history();
-        const bool roundTripped = history.size() == 2 && history[0].output == "\xF0\x9F\x90\xB1" && history[0].trigger == "cat" &&
-                                  history[1].output == "\xE2\x98\x95" && history[1].trigger == "caf\xC3\xA9";
+        const auto& history      = reloaded.history();
+        const bool  roundTripped = history.size() == 2 && history[0].output == "\xF0\x9F\x90\xB1" && history[0].trigger == "cat" && history[1].output == "\xE2\x98\x95" &&
+            history[1].trigger == "caf\xC3\xA9";
         check(roundTripped, "utf-8 round-trip", "2 entries verbatim", outputsStr(history));
     }
 
     // History: no tmp leftover after successful save (atomic tmp + rename).
     {
-        const auto path = root / "history-tmp.conf";
+        const auto  path = root / "history-tmp.conf";
         EmojiLoader loader(nullptr);
         loader.setHistoryPathForTest(path.string());
         loader.recordHistory({.trigger = "cat", .output = "\xF0\x9F\x90\xB1"});
@@ -244,17 +241,15 @@ int main() {
     {
         const auto dir = root / "history-readonly";
         std::filesystem::create_directories(dir, ec);
-        const auto path = dir / "history.conf";
+        const auto  path = dir / "history.conf";
         EmojiLoader loader(nullptr);
         loader.setHistoryPathForTest(path.string());
         loader.recordHistory({.trigger = "cat", .output = "\xF0\x9F\x90\xB1"});
         const std::string before = readText(path);
-        std::error_code permEc;
+        std::error_code   permEc;
         std::filesystem::permissions(dir, std::filesystem::perms::owner_read | std::filesystem::perms::owner_exec, permEc);
         loader.recordHistory({.trigger = "dog", .output = "\xF0\x9F\x90\xB6"});
-        std::filesystem::permissions(dir,
-                                     std::filesystem::perms::owner_read | std::filesystem::perms::owner_write | std::filesystem::perms::owner_exec,
-                                     permEc);
+        std::filesystem::permissions(dir, std::filesystem::perms::owner_read | std::filesystem::perms::owner_write | std::filesystem::perms::owner_exec, permEc);
         if (::geteuid() == 0) {
             std::cout << "SKIP failed-write-preserves (running as root, permissions do not block writes)\n";
         } else {

@@ -10,8 +10,8 @@
 #include <algorithm>
 #include <cctype>
 #include <cstdio>
- #include <emoji_public.h>
- #include <fcitx-utils/standardpath.h>
+#include <emoji_public.h>
+#include <fcitx-utils/standardpath.h>
 #include <fstream>
 #include <string_view>
 #include <utility>
@@ -153,7 +153,12 @@ std::vector<EmojiEntry> EmojiLoader::search(const std::string& prefix) {
     const std::string query = asciiLower(prefix);
 
     // Tiers beat raw bonus points; the score only breaks ties within a tier.
-    enum class Rank : int { Exact = 0, Prefix = 1, WordBoundary = 2, Fuzzy = 3 };
+    enum class Rank : int {
+        Exact        = 0,
+        Prefix       = 1,
+        WordBoundary = 2,
+        Fuzzy        = 3
+    };
     struct Scored {
         EmojiEntry entry;
         Rank       rank;
@@ -165,7 +170,7 @@ std::vector<EmojiEntry> EmojiLoader::search(const std::string& prefix) {
     for (const auto& entry : emojiList) {
         // Fast path: triggers are almost always already lowercase, so only
         // fold (allocating) when the trigger contains uppercase ASCII.
-        std::string     lowered;
+        std::string      lowered;
         std::string_view trigger = entry.trigger;
         for (char c : entry.trigger) {
             if (c >= 'A' && c <= 'Z') {

@@ -36,8 +36,8 @@ namespace {
 
 int main() {
     configureTestPaths("fcitx5-lotus-emoji-history-page-navigation");
-    const auto                        historyPath = std::filesystem::path(getEnv("XDG_CONFIG_HOME")) / "fcitx5/conf/lotus-emoji-history.conf";
-    std::ofstream                     history(historyPath);
+    const auto    historyPath = std::filesystem::path(getEnv("XDG_CONFIG_HOME")) / "fcitx5/conf/lotus-emoji-history.conf";
+    std::ofstream history(historyPath);
     // History is capped at the newest 9 (EmojiLoader::kMaxEmojiHistory), so a
     // single page is the most this mode can show from history alone.
     const std::array<const char*, 9> emoji = {"😀", "😁", "😂", "😃", "😄", "😅", "😆", "😉", "😊"};
