@@ -9,6 +9,7 @@
 #include "lotus-utils.h"
 #include <algorithm>
 #include <cctype>
+#include <cstdint>
 #include <cstdio>
 #include <emoji_public.h>
 #include <fcitx-utils/standardpath.h>
@@ -134,7 +135,7 @@ void EmojiLoader::saveHistory() {
 namespace {
 
     std::string asciiLower(std::string s) {
-        std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+        std::ranges::transform(s, s.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
         return s;
     }
 
@@ -153,16 +154,16 @@ std::vector<EmojiEntry> EmojiLoader::search(const std::string& prefix) {
     const std::string query = asciiLower(prefix);
 
     // Tiers beat raw bonus points; the score only breaks ties within a tier.
-    enum class Rank : int {
+    enum class Rank : std::uint8_t {
         Exact        = 0,
         Prefix       = 1,
         WordBoundary = 2,
-        Fuzzy        = 3
+        Fuzzy        = 3,
     };
     struct Scored {
         EmojiEntry entry;
-        Rank       rank;
-        int        score;
+        Rank       rank{};
+        int        score = 0;
     };
     std::vector<Scored> scored;
     scored.reserve(emojiList.size());
@@ -205,8 +206,11 @@ std::vector<EmojiEntry> EmojiLoader::search(const std::string& prefix) {
                 // Fuzzy: the query must be a subsequence of the trigger.
                 size_t queryIndex = 0;
                 for (char c : trigger) {
-                    if (c == query[queryIndex] && ++queryIndex == query.size()) {
-                        break;
+                    if (queryIndex < query.size() && c == query[queryIndex]) {
+                        ++queryIndex;
+                        if (queryIndex == query.size()) {
+                            break;
+                        }
                     }
                 }
                 if (queryIndex != query.size()) {
@@ -254,7 +258,7 @@ std::vector<EmojiEntry> EmojiLoader::search(const std::string& prefix) {
         scored.push_back({.entry = entry, .rank = rank, .score = score});
     }
 
-    std::stable_sort(scored.begin(), scored.end(), [](const auto& a, const auto& b) {
+    std::ranges::stable_sort(scored, [](const auto& a, const auto& b) {
         if (a.rank != b.rank)
             return a.rank < b.rank;
         return a.score > b.score;

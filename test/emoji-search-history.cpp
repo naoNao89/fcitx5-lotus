@@ -16,6 +16,7 @@
 // load-cap/dedupe/malformed tests fail against the old implementation.
 #include "emoji.h"
 
+#include <algorithm>
 #include <chrono>
 #include <cstddef>
 #include <cstdio>
@@ -51,12 +52,7 @@ namespace {
     }
 
     bool hasOutput(const std::vector<EmojiEntry>& entries, const std::string& output) {
-        for (const auto& e : entries) {
-            if (e.output == output) {
-                return true;
-            }
-        }
-        return false;
+        return std::ranges::any_of(entries, [&](const auto& e) { return e.output == output; });
     }
 
     void writeText(const std::filesystem::path& path, const std::string& text) {
@@ -70,7 +66,7 @@ namespace {
         if (!file.is_open()) {
             return "";
         }
-        return std::string((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+        return {(std::istreambuf_iterator<char>(file)), (std::istreambuf_iterator<char>())};
     }
 
     EmojiLoader makeSearchLoader(std::vector<EmojiEntry> entries) {
@@ -152,6 +148,7 @@ int main() {
     // Search: bounded Top-K.
     {
         std::vector<EmojiEntry> entries;
+        entries.reserve(EmojiLoader::kMaxEmojiSearchResults + 50);
         for (size_t i = 0; i < EmojiLoader::kMaxEmojiSearchResults + 50; ++i) {
             entries.push_back({.trigger = "emoji" + std::to_string(i), .output = "e" + std::to_string(i)});
         }
@@ -163,6 +160,7 @@ int main() {
     // Search: 1-char query latency observation (bounded result keeps it cheap).
     {
         std::vector<EmojiEntry> entries;
+        entries.reserve(5000);
         for (size_t i = 0; i < 5000; ++i) {
             entries.push_back({.trigger = "k" + std::to_string(i), .output = "e" + std::to_string(i)});
         }
