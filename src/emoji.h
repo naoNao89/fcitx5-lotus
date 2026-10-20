@@ -19,6 +19,7 @@
 
 #include <fcitx/addonmanager.h>
 
+#include "common-export.h"
 #include "emoji-entry.h"
 
 /**
@@ -26,7 +27,7 @@
  *
  * Loads emoji list from Fcitx5 emoji addon and provides fuzzy matching search.
  */
-class EmojiLoader {
+class LOTUS_EXPORT EmojiLoader {
   public:
     /// Maximum entries kept in (and written back to) the emoji history file.
     static constexpr std::size_t kMaxEmojiHistory = 9;
