@@ -38,7 +38,9 @@ int main() {
     configureTestPaths("fcitx5-lotus-emoji-history-page-navigation");
     const auto                        historyPath = std::filesystem::path(getEnv("XDG_CONFIG_HOME")) / "fcitx5/conf/lotus-emoji-history.conf";
     std::ofstream                     history(historyPath);
-    const std::array<const char*, 18> emoji = {"😀", "😁", "😂", "😃", "😄", "😅", "😆", "😉", "😊", "😋", "😎", "😍", "😘", "😗", "😙", "😚", "🙂", "🤗"};
+    // History is capped at the newest 9 (EmojiLoader::kMaxEmojiHistory), so a
+    // single page is the most this mode can show from history alone.
+    const std::array<const char*, 9> emoji = {"😀", "😁", "😂", "😃", "😄", "😅", "😆", "😉", "😊"};
     for (size_t i = 0; i < emoji.size(); ++i)
         history << "history" << i << '=' << emoji.at(i) << '\n';
     history.close();
@@ -60,20 +62,32 @@ int main() {
     engine.activate(entry, focus);
 
     auto candidates = std::dynamic_pointer_cast<fcitx::CommonCandidateList>(context->inputPanel().candidateList());
-    if (!candidates || candidates->totalSize() != 18 || candidates->pageSize() != 9) {
-        reportFailure("load emoji history fixture", "18 candidates with page size 9",
+    if (!candidates || candidates->totalSize() != 9 || candidates->pageSize() != 9) {
+        reportFailure("load emoji history fixture", "9 candidates with page size 9",
                       candidates ? "candidates=" + std::to_string(candidates->totalSize()) + ", page-size=" + std::to_string(candidates->pageSize()) : "no candidate list",
-                      "EmojiLoader::loadHistory did not provide the multi-page fixture to the real emoji mode");
+                      "EmojiLoader::loadHistory did not provide the capped single-page fixture to the real emoji mode");
         return 1;
     }
 
-    // Enter page two using the production Page_Down path, then move Up from its
-    // first candidate. This must wrap within page two, rather than changing page.
-    if (!send(engine, entry, *context, FcitxKey_Page_Down) || !send(engine, entry, *context, FcitxKey_Up))
+    // Move Up from the first candidate. This must wrap to the last candidate
+    // of the same page, rather than changing page.
+    if (!send(engine, entry, *context, FcitxKey_Up))
         return 1;
 
-    if (candidates->currentPage() != 1 || candidates->globalCursorIndex() != 17) {
-        reportFailure("wrap Up at first candidate of second emoji-history page", "page=1, global cursor=17",
+    if (candidates->currentPage() != 0 || candidates->globalCursorIndex() != 8) {
+        reportFailure("wrap Up at first candidate of emoji-history page", "page=0, global cursor=8",
+                      "page=" + std::to_string(candidates->currentPage()) + ", global cursor=" + std::to_string(candidates->globalCursorIndex()),
+                      "emoji candidate navigation crossed pages instead of wrapping within the current page");
+        return 1;
+    }
+
+    // Move Down from the last candidate. This must wrap to the first
+    // candidate of the same page.
+    if (!send(engine, entry, *context, FcitxKey_Down))
+        return 1;
+
+    if (candidates->currentPage() != 0 || candidates->globalCursorIndex() != 0) {
+        reportFailure("wrap Down at last candidate of emoji-history page", "page=0, global cursor=0",
                       "page=" + std::to_string(candidates->currentPage()) + ", global cursor=" + std::to_string(candidates->globalCursorIndex()),
                       "emoji candidate navigation crossed pages instead of wrapping within the current page");
         return 1;

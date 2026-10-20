@@ -383,7 +383,13 @@ namespace fcitx {
                 return;
             }
         } else {
-            emojiCandidates_ = engine_.emojiLoader().search(lotus::utf8::encode(emojiBuffer_));
+            auto results = engine_.emojiLoader().search(lotus::utf8::encode(emojiBuffer_));
+            // Bound per-keystroke candidate work: keep only the Top-K hits.
+            // (search() truncates itself; this is belt-and-braces.)
+            if (results.size() > EmojiLoader::kMaxEmojiSearchResults) {
+                results.resize(EmojiLoader::kMaxEmojiSearchResults);
+            }
+            emojiCandidates_ = std::move(results);
         }
 
         if (!emojiBuffer_.empty()) {
@@ -404,7 +410,8 @@ namespace fcitx {
             candidateList->setLayoutHint(CandidateLayoutHint::Vertical);
             candidateList->setPageSize(9);
 
-            for (size_t i = 0; i < emojiCandidates_.size(); ++i) {
+            const size_t candidateCount = std::min(emojiCandidates_.size(), EmojiLoader::kMaxEmojiSearchResults);
+            for (size_t i = 0; i < candidateCount; ++i) {
                 size_t localIndex = (i % 9) + 1;
                 Text   displayLabel;
                 if (emojiBuffer_.empty()) {

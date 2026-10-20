@@ -13,12 +13,13 @@
 #ifndef EMOJI_H
 #define EMOJI_H
 
-#include "emoji-entry.h"
-
+#include <cstddef>
 #include <string>
 #include <vector>
 
 #include <fcitx/addonmanager.h>
+
+#include "emoji-entry.h"
 
 /**
  * @brief Emoji loader with fuzzy search capability.
@@ -27,13 +28,17 @@
  */
 class EmojiLoader {
   public:
+    /// Maximum entries kept in (and written back to) the emoji history file.
+    static constexpr std::size_t kMaxEmojiHistory = 9;
+    /// Upper bound on results returned by search().
+    /// Keeps per-keystroke allocation/sort cheap; the UI still paginates 9/page.
+    static constexpr std::size_t kMaxEmojiSearchResults = 100;
+
     /**
      * @brief Constructs loader and initializes emoji list from Fcitx5.
      * @param addonManager Fcitx5 addon manager instance.
-     * @param language Language code for emoji data.
      */
     explicit EmojiLoader(fcitx::AddonManager* addonManager);
-
     /**
      * @brief Searches emoji by prefix with fuzzy matching.
      * @param prefix Search query.
@@ -46,6 +51,18 @@ class EmojiLoader {
      * @param entry The emoji entry to record.
      */
     void recordHistory(const EmojiEntry& entry);
+
+    /**
+     * @brief Replaces the in-memory emoji list (tests only).
+     * @param entries Entries to search over.
+     */
+    void setEmojiListForTest(std::vector<EmojiEntry> entries);
+
+    /**
+     * @brief Points history at another file and reloads it (tests only).
+     * @param path History file path to use from now on.
+     */
+    void setHistoryPathForTest(const std::string& path);
 
     /**
      * @brief Gets the emoji history.
