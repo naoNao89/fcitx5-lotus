@@ -1204,7 +1204,10 @@ namespace fcitx {
     }
 
     bool LotusState::handleDoubleSpaceToPeriod(KeyEvent& keyEvent, KeySym currentSym) {
-        if (*engine_.config().doubleSpaceToPeriod && currentMode() != LotusMode::Off) {
+        // Emoji mode buffers keys in its own preedit without delivering them
+        // to the app, so a shortcut replacement here would backspace/delete
+        // text outside the emoji buffer. Off mode has no buffer at all.
+        if (*engine_.config().doubleSpaceToPeriod && currentMode() != LotusMode::Off && currentMode() != LotusMode::Emoji) {
             bool isSpaceKey = (currentSym == FcitxKey_space || currentSym == FcitxKey_KP_Space);
             if (isSpaceKey && !keyEvent.key().hasModifier()) {
                 if (isPrevSpace_) {
@@ -1222,7 +1225,7 @@ namespace fcitx {
     }
 
     bool LotusState::handleDoubleHyphenToEmDash(KeyEvent& keyEvent, KeySym currentSym) {
-        if (*engine_.config().doubleHyphenToEmDash && currentMode() != LotusMode::Off) {
+        if (*engine_.config().doubleHyphenToEmDash && currentMode() != LotusMode::Off && currentMode() != LotusMode::Emoji) {
             bool isHyphenKey = (currentSym == FcitxKey_minus || currentSym == FcitxKey_KP_Subtract);
             if (isHyphenKey && !keyEvent.key().hasModifier()) {
                 if (isPrevHyphen_) {
